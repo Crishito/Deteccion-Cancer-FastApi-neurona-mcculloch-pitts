@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Diagnóstico de Cáncer de Mama</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        label { display: block; margin-top: 10px; font-weight: bold; color: #555;}
+        select { width: 100%; padding: 8px; margin-top: 5px; border-radius: 4px; border: 1px solid #ccc;}
+        button { margin-top: 20px; width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        #resultado { margin-top: 20px; padding: 15px; font-weight: bold; text-align: center; display: none; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Diagnóstico con Neurona M-P</h2>
+        <p style="text-align: center; font-size: 14px; color: #666;">Ingrese los valores binarizados (1 = Alto/Anormal, 0 = Bajo/Normal)</p>
+        
+        <form id="formulario">
+            <label>Radio Medio (mean radius):</label>
+            <select id="mean_radius"><option value="0">0</option><option value="1">1</option></select>
+
+            <label>Textura Media (mean texture):</label>
+            <select id="mean_texture"><option value="0">0</option><option value="1">1</option></select>
+
+            <label>Perímetro Medio (mean perimeter):</label>
+            <select id="mean_perimeter"><option value="0">0</option><option value="1">1</option></select>
+
+            <label>Suavidad Media (mean smoothness):</label>
+            <select id="mean_smoothness"><option value="0">0</option><option value="1">1</option></select>
+
+            <label>Compacidad Media (mean compactness):</label>
+            <select id="mean_compactness"><option value="0">0</option><option value="1">1</option></select>
+
+            <label>Puntos Cóncavos Medios (mean concave points):</label>
+            <select id="mean_concave_points"><option value="0">0</option><option value="1">1</option></select>
+
+            <label>Simetría Media (mean symmetry):</label>
+            <select id="mean_symmetry"><option value="0">0</option><option value="1">1</option></select>
+
+            <label>Dimensión Fractal Media (mean fractal dimension):</label>
+            <select id="mean_fractal_dimension"><option value="0">0</option><option value="1">1</option></select>
+
+            <button type="submit">Generar Diagnóstico</button>
+        </form>
+        <div id="resultado"></div>
+    </div>
+
+    <script>
+        document.getElementById("formulario").addEventListener("submit", async function(event) {
+            event.preventDefault(); // Evita que la página se recargue
+            
+            // Recolectamos los datos seleccionados en los selectores
+            const datos = {
+                mean_radius: parseInt(document.getElementById("mean_radius").value),
+                mean_texture: parseInt(document.getElementById("mean_texture").value),
+                mean_perimeter: parseInt(document.getElementById("mean_perimeter").value),
+                mean_smoothness: parseInt(document.getElementById("mean_smoothness").value),
+                mean_compactness: parseInt(document.getElementById("mean_compactness").value),
+                mean_concave_points: parseInt(document.getElementById("mean_concave_points").value),
+                mean_symmetry: parseInt(document.getElementById("mean_symmetry").value),
+                mean_fractal_dimension: parseInt(document.getElementById("mean_fractal_dimension").value)
+            };
+
+            try {
+                // Hacemos la petición a nuestra API en Python
+                const respuesta = await fetch("http://127.0.0.1:8000/diagnostico", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(datos)
+                });
+
+                const json = await respuesta.json();
+                
+                // Mostramos el resultado en pantalla
+                const divResultado = document.getElementById("resultado");
+                divResultado.style.display = "block";
+                
+                if(json.diagnostico.includes("Positivo")) {
+                    divResultado.style.backgroundColor = "#f8d7da"; // Rojo claro
+                    divResultado.style.color = "#721c24";
+                } else {
+                    divResultado.style.backgroundColor = "#d4edda"; // Verde claro
+                    divResultado.style.color = "#155724";
+                }
+                divResultado.innerHTML = `<strong>Resultado:</strong> ${json.diagnostico} <br><small>(Threshold del modelo: ${json.threshold})</small>`;
+            } catch (error) {
+                alert("Error al conectar con la API. Asegúrate de que uvicorn siga corriendo en la terminal.");
+            }
+        });
+    </script>
+</body>
+</html>
