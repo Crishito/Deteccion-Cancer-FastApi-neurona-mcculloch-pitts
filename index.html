@@ -1,96 +1,126 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Diagnóstico de Cáncer de Mama</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #333; }
-        label { display: block; margin-top: 10px; font-weight: bold; color: #555;}
-        select { width: 100%; padding: 8px; margin-top: 5px; border-radius: 4px; border: 1px solid #ccc;}
-        button { margin-top: 20px; width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
-        button:hover { background-color: #0056b3; }
-        #resultado { margin-top: 20px; padding: 15px; font-weight: bold; text-align: center; display: none; border-radius: 4px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clasificación de muestras mamarias - M-P</title>
+  <style>
+    body { font: 16px Arial, sans-serif; background: #f3f6fa; margin: 25px; color: #17253a; }
+    main { max-width: 680px; margin: auto; background: white; padding: 26px; border-radius: 12px; box-shadow: 0 3px 18px #0001; }
+    h1 { font-size: 24px; margin-top: 0; }
+    .aviso { padding: 12px; background: #f5f0dc; border-radius: 8px; font-size: 14px; }
+    .campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 20px 0; }
+    label { display: block; font-weight: bold; margin-bottom: 6px; }
+    select { box-sizing: border-box; width: 100%; padding: 10px; border: 1px solid #aeb8c5; border-radius: 6px; font-size: 16px; }
+    .ayuda { display:block; margin-top:5px; color:#516078; font-size:12px; }
+    button { background: #1559a4; color: white; padding: 12px 18px; border: 0; border-radius: 6px; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    #resultado { margin-top: 18px; padding: 13px; border-radius: 8px; display: none; }
+    .error { background: #ffe5e5; color: #831a1a; }
+    .exito { background: #eaf1fa; color: #183d64; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Diagnóstico con Neurona M-P</h2>
-        <p style="text-align: center; font-size: 14px; color: #666;">Ingrese los valores binarizados (1 = Alto/Anormal, 0 = Bajo/Normal)</p>
-        
-        <form id="formulario">
-            <label>Radio Medio (mean radius):</label>
-            <select id="mean_radius"><option value="0">0</option><option value="1">1</option></select>
+  <main>
+    <h1>Clasificación de muestras mamarias</h1>
+    <p>Neurona de McCulloch y Pitts — conjunto de datos Wisconsin (WDBC).</p>
+    <p class="aviso"><strong>Ingresa</strong> valores binarios de una muestra FNA previamente analizada: <strong>1 = medida baja (menor o igual al límite)</strong> y <strong>0 = medida alta (mayor al límite)</strong>.</p>
+    <form id="formulario">
+      <div id="campos" class="campos"><p>Cargando características...</p></div>
+      <button type="submit" id="boton" disabled>Clasificar muestra</button>
+    </form>
+    <div id="resultado" role="status" aria-live="polite"></div>
+  </main>
+  <script>
+    const nombresEspanol = {
+      mean: "Medio", error: "Error estándar", worst: "Mayor",
+      radius: "radio", texture: "textura", perimeter: "perímetro",
+      area: "área", smoothness: "suavidad", compactness: "compacidad",
+      concavity: "concavidad", "concave points": "puntos cóncavos",
+      symmetry: "simetría", "fractal dimension": "dimensión fractal"
+    };
+    const campos = document.getElementById("campos");
+    const boton = document.getElementById("boton");
+    const resultado = document.getElementById("resultado");
+    let caracteristicas = [];
 
-            <label>Textura Media (mean texture):</label>
-            <select id="mean_texture"><option value="0">0</option><option value="1">1</option></select>
+    function etiqueta(nombre) {
+      const partes = nombre.match(/^(mean|worst|.* error) (.+)$/);
+      if (!partes) return nombre;
+      const tipo = partes[1].endsWith("error") ? "Error estándar" : nombresEspanol[partes[1]];
+      const caracteristica = nombresEspanol[partes[2]] || partes[2];
+      return `${caracteristica[0].toUpperCase() + caracteristica.slice(1)} (${tipo.toLowerCase()})`;
+    }
 
-            <label>Perímetro Medio (mean perimeter):</label>
-            <select id="mean_perimeter"><option value="0">0</option><option value="1">1</option></select>
+    function mostrar(mensaje, error = false) {
+      resultado.textContent = mensaje;
+      resultado.className = error ? "error" : "exito";
+      resultado.style.display = "block";
+    }
 
-            <label>Suavidad Media (mean smoothness):</label>
-            <select id="mean_smoothness"><option value="0">0</option><option value="1">1</option></select>
-
-            <label>Compacidad Media (mean compactness):</label>
-            <select id="mean_compactness"><option value="0">0</option><option value="1">1</option></select>
-
-            <label>Puntos Cóncavos Medios (mean concave points):</label>
-            <select id="mean_concave_points"><option value="0">0</option><option value="1">1</option></select>
-
-            <label>Simetría Media (mean symmetry):</label>
-            <select id="mean_symmetry"><option value="0">0</option><option value="1">1</option></select>
-
-            <label>Dimensión Fractal Media (mean fractal dimension):</label>
-            <select id="mean_fractal_dimension"><option value="0">0</option><option value="1">1</option></select>
-
-            <button type="submit">Generar Diagnóstico</button>
-        </form>
-        <div id="resultado"></div>
-    </div>
-
-    <script>
-        document.getElementById("formulario").addEventListener("submit", async function(event) {
-            event.preventDefault(); // Evita que la página se recargue
-            
-            // Recolectamos los datos seleccionados en los selectores
-            const datos = {
-                mean_radius: parseInt(document.getElementById("mean_radius").value),
-                mean_texture: parseInt(document.getElementById("mean_texture").value),
-                mean_perimeter: parseInt(document.getElementById("mean_perimeter").value),
-                mean_smoothness: parseInt(document.getElementById("mean_smoothness").value),
-                mean_compactness: parseInt(document.getElementById("mean_compactness").value),
-                mean_concave_points: parseInt(document.getElementById("mean_concave_points").value),
-                mean_symmetry: parseInt(document.getElementById("mean_symmetry").value),
-                mean_fractal_dimension: parseInt(document.getElementById("mean_fractal_dimension").value)
-            };
-
-            try {
-                // Hacemos la petición a nuestra API en Python
-                const respuesta = await fetch("http://127.0.0.1:8000/diagnostico", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(datos)
-                });
-
-                const json = await respuesta.json();
-                
-                // Mostramos el resultado en pantalla
-                const divResultado = document.getElementById("resultado");
-                divResultado.style.display = "block";
-                
-                if(json.diagnostico.includes("Positivo")) {
-                    divResultado.style.backgroundColor = "#f8d7da"; // Rojo claro
-                    divResultado.style.color = "#721c24";
-                } else {
-                    divResultado.style.backgroundColor = "#d4edda"; // Verde claro
-                    divResultado.style.color = "#155724";
-                }
-                divResultado.innerHTML = `<strong>Resultado:</strong> ${json.diagnostico} <br><small>(Threshold del modelo: ${json.threshold})</small>`;
-            } catch (error) {
-                alert("Error al conectar con la API. Asegúrate de que uvicorn siga corriendo en la terminal.");
-            }
+    async function iniciar() {
+      try {
+        const respuesta = await fetch("/caracteristicas");
+        if (!respuesta.ok) throw new Error("No se pudo consultar el modelo");
+        const datos = await respuesta.json();
+        caracteristicas = datos.caracteristicas;
+        const cortes = datos.cortes;
+        campos.replaceChildren();
+        caracteristicas.forEach((nombre, indice) => {
+          const contenedor = document.createElement("div");
+          const label = document.createElement("label");
+          const select = document.createElement("select");
+          label.htmlFor = `campo_${indice}`;
+          label.textContent = etiqueta(nombre);
+          select.id = `campo_${indice}`;
+          select.required = true;
+          const opciones = [
+            ["", "Selecciona un valor"],
+            ["1", "1 — Medida baja"],
+            ["0", "0 — Medida alta"]
+          ];
+          opciones.forEach(([valor, texto]) => {
+            const opcion = document.createElement("option");
+            opcion.value = valor;
+            opcion.textContent = texto;
+            select.append(opcion);
+          });
+          const ayuda = document.createElement("small");
+          ayuda.textContent = `Límite de referencia: ${Number(cortes[indice]).toFixed(5)} (medida ≤ límite: 1; medida > límite: 0).`;
+          ayuda.className = "ayuda";
+          contenedor.append(label, select, ayuda);
+          campos.append(contenedor);
         });
-    </script>
+        boton.disabled = false;
+      } catch (e) {
+        campos.textContent = "No fue posible obtener las características.";
+        mostrar("Comprueba que la API esté ejecutándose.", true);
+      }
+    }
+
+    document.getElementById("formulario").addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+      boton.disabled = true;
+      const valores = {};
+      caracteristicas.forEach((nombre, i) => {
+        valores[nombre] = Number(document.getElementById(`campo_${i}`).value);
+      });
+      try {
+        const respuesta = await fetch("/diagnostico", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ valores })
+        });
+        const datos = await respuesta.json();
+        if (!respuesta.ok) throw new Error(typeof datos.detail === "string" ? datos.detail : "Datos inválidos");
+        mostrar(`Resultado: ${datos.clasificacion}`);
+      } catch (e) {
+        mostrar(`Error: ${e.message}`, true);
+      } finally {
+        boton.disabled = false;
+      }
+    });
+    iniciar();
+  </script>
 </body>
 </html>
